@@ -174,19 +174,8 @@ class Greenhouse:
         if data:
             command = greenhouse_pb2.Command()
             command.ParseFromString(data)
-            if command.command == "GET":
-                response = greenhouse_pb2.Response()
-                response.response = "Data fetched"
-                for feature, actuator in self.actuators.items():
-                    for act_name, act in actuator.items():
-                        response.device_statuses.add(
-                            feature=feature,
-                            value=act['value'](),
-                            status=act['status']()
-                        )
-                conn.send(response.SerializeToString())
-
-            elif command.command == "SET":
+            
+            if command.command == "SET":
                 self.control_actuator(command.feature, command.actuator, command.value)
                 conn.send(b"Actuator set successfully.")
         conn.close()

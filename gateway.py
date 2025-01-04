@@ -19,10 +19,15 @@ def handle_greenhouse(conn, addr):
             data = conn.recv(BUFFER_SIZE)
             if not data:
                 break
+
             general_data = greenhouse_pb2.Response()
             general_data.ParseFromString(data)
             print(f"[GREENHOUSE] Received Data: {general_data}")
+
+            with data_buffer.mutex:  
+                data_buffer.queue.clear() #clean buffer
             data_buffer.put(general_data)
+
     except Exception as e:
         print(f"Error on greenhouse: {e}")
     finally:
@@ -41,18 +46,43 @@ def handle_client(conn, addr):
 
             if request.command == "GET":
                 response = greenhouse_pb2.Response(response="Data fetched")
+                temp_buffer = []
+
                 while not data_buffer.empty():
                     data = data_buffer.get()
-                    for device_status in data.device_statuses:
-                        response.device_statuses.append(device_status)
+                    temp_buffer.append(data)
+                    if request.device == 'sensor':
+                        if request.feature == 'all':
+                            response.device_statuses.extend(
+                                [d for d in data.device_statuses if d.device == "sensor"]
+                            )
+                        else:
+                            response.device_statuses.extend(
+                                [d for d in data.device_statuses 
+                                if d.device == "sensor" and d.feature == request.feature]
+                            )
+
+                    elif request.device == 'actuator':
+                        if request.actuator == 'all':
+                            response.device_statuses.extend(
+                                [d for d in data.device_statuses if d.device == "actuator"]
+                            )
+                        else:
+                            response.device_statuses.extend(
+                                [d for d in data.device_statuses 
+                                if d.device == "actuator" and d.actuator == request.actuator]
+                            )
+                for item in temp_buffer:
+                    data_buffer.put(item)
                 conn.send(response.SerializeToString())
+
             elif request.command == "SET":
-                #send command to greenhouse and get the response
                 print(f"[CLIENT] Sending command to greenhouse: {request}")
     except Exception as e:
         print(f"Error on Client: {e}")
     finally:
         conn.close()
+
 
 def start_gateway(port, handler):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

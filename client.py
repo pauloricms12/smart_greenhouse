@@ -54,15 +54,13 @@ if __name__ == "__main__":
             send_command("GET", "sensor", target_feature=feature)
 
         elif option == "2":
-            feature = input("Enter the actuator category (humidity, temperature, light): ")
             actuator = input("Enter the actuator (irrigator, heater, cooler, lights, curtains): ")
-            send_command("GET", "actuator", target_feature=feature, target_actuator=actuator)
+            send_command("GET", "actuator", target_actuator=actuator)
 
         elif option == "3":
-            feature = input("Enter the actuator category (humidity, temperature, light): ")
             actuator = input("Enter the actuator (irrigator, heater, cooler, lights, curtains): ")
             value = float(input("Enter the desired value: "))
-            send_command("SET", "actuator", target_feature=feature, target_actuator=actuator, value=value)
+            send_command("SET", "actuator", target_actuator=actuator, value=value)
 
         elif option == "4":
             print("Exiting the program.")
