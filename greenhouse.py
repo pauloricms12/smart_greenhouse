@@ -103,14 +103,12 @@ class Greenhouse:
                 conn = socket.create_connection((gateway_ip, gateway_port))
                 response = greenhouse_pb2.Response()
 
-                # Humidity Sensor
                 humidity_sensor = response.device_statuses.add()
                 humidity_sensor.feature = "humidity"
                 humidity_sensor.device = "sensor"
                 humidity_sensor.value = self.humiditycontrol.humidity_value
                 humidity_sensor.unit = self.humiditycontrol.humidity_unit
 
-                # Humidity Actuator
                 irrigator = response.device_statuses.add()
                 irrigator.device = "actuator"
                 irrigator.actuator = "irrigator"
@@ -119,14 +117,12 @@ class Greenhouse:
                 irrigator.on = self.humiditycontrol.irrigator_on
                 irrigator.status = "Ligado" if self.humiditycontrol.irrigator_on else "Desligado"
 
-                # Temperature Sensor
                 temperature_sensor = response.device_statuses.add()
                 temperature_sensor.feature = "temperature"
                 temperature_sensor.device = "sensor"
                 temperature_sensor.value = self.temperaturecontrol.temperature_value
                 temperature_sensor.unit = self.temperaturecontrol.temperature_unit
 
-                # Heater Actuator
                 heater = response.device_statuses.add()
                 heater.device = "actuator"
                 heater.actuator = "heater"
@@ -135,7 +131,6 @@ class Greenhouse:
                 heater.on = self.temperaturecontrol.heater_on
                 heater.status = "Ligado" if self.temperaturecontrol.heater_on else "Desligado"
 
-                # Cooler Actuator
                 cooler = response.device_statuses.add()
                 cooler.device = "actuator"
                 cooler.actuator = "cooler"
@@ -144,14 +139,12 @@ class Greenhouse:
                 cooler.on = self.temperaturecontrol.cooler_on
                 cooler.status = "Ligado" if self.temperaturecontrol.cooler_on else "Desligado"
 
-                # Light Sensor
                 light_sensor = response.device_statuses.add()
                 light_sensor.feature = "light"
                 light_sensor.device = "sensor"
                 light_sensor.value = self.lightcontrol.light_value
                 light_sensor.unit = self.lightcontrol.light_unit
 
-                # Lights Actuator
                 lights = response.device_statuses.add()
                 lights.device = "actuator"
                 lights.actuator = "lights"
@@ -160,7 +153,6 @@ class Greenhouse:
                 lights.value = self.lightcontrol.lights_intensity
                 lights.unit = self.lightcontrol.lights_unit
 
-                # Curtains Actuator
                 curtains = response.device_statuses.add()
                 curtains.device = "actuator"
                 curtains.actuator = "curtains"
@@ -175,10 +167,6 @@ class Greenhouse:
             except Exception as e:
                 logging.error(f"Failed to send data to gateway: {e}")
             time.sleep(10)
-
-
-
-
 
 
     def handle_request(self, conn):
