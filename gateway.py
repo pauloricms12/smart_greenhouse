@@ -54,17 +54,17 @@ def handle_client(conn, addr):
     finally:
         conn.close()
 
-def start_server(port, handler):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(("0.0.0.0", port))
-    server_socket.listen(5)
+def start_gateway(port, handler):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("0.0.0.0", port))
+    s.listen(5)
     print(f"[SERVER] Listening on port {port}...")
 
     while True:
-        conn, addr = server_socket.accept()
+        conn, addr = s.accept()
         threading.Thread(target=handler, args=(conn, addr)).start()
 
 if __name__ == "__main__":
     with futures.ThreadPoolExecutor(max_workers=2) as executor:
-        executor.submit(start_server, GREENHOUSE_PORT, handle_greenhouse)
-        executor.submit(start_server, CLIENT_PORT, handle_client)
+        executor.submit(start_gateway, GREENHOUSE_PORT, handle_greenhouse)
+        executor.submit(start_gateway, CLIENT_PORT, handle_client)
