@@ -19,7 +19,7 @@ def handle_greenhouse(conn, addr):
             data = conn.recv(BUFFER_SIZE)
             if not data:
                 break
-            general_data = greenhouse_pb2.GeneralResponse()
+            general_data = greenhouse_pb2.Response()
             general_data.ParseFromString(data)
             print(f"[GREENHOUSE] Received Data: {general_data}")
             data_buffer.put(general_data)
@@ -40,7 +40,7 @@ def handle_client(conn, addr):
             print(f"[CLIENT] Command received: {request.command}")
 
             if request.command == "GET":
-                response = greenhouse_pb2.GeneralResponse(response="Data fetched")
+                response = greenhouse_pb2.Response(response="Data fetched")
                 while not data_buffer.empty():
                     data = data_buffer.get()
                     for device_status in data.device_statuses:

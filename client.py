@@ -20,9 +20,14 @@ def send_command(command, device, target_feature="", target_actuator="", value=0
         client_socket.close()
 
         if data:
-            response = data.decode() if isinstance(data, bytes) else str(data)
-            logging.info(f"Response from server (via Gateway): {response}")
-            return response
+            response = greenhouse_pb2.Response()
+            try:
+                response.ParseFromString(data)
+                logging.info(f"Response from server (via Gateway): {response}")
+                return response
+            except Exception as e:
+                logging.error(f"Failed to parse Protobuf message from Gatewat: {e}")
+                return "Failed to parse response"
         else:
             logging.warning("No response received from the Gateway.")
             return "No response received from the Gateway."
@@ -46,18 +51,18 @@ if __name__ == "__main__":
 
         if option == "1":
             feature = input("Enter the sensor (humidity, temperature, light): ")
-            send_command("status", "sensor", target_feature=feature)
+            send_command("GET", "sensor", target_feature=feature)
 
         elif option == "2":
             feature = input("Enter the actuator category (humidity, temperature, light): ")
             actuator = input("Enter the actuator (irrigator, heater, cooler, lights, curtains): ")
-            send_command("status", "actuator", target_feature=feature, target_actuator=actuator)
+            send_command("GET", "actuator", target_feature=feature, target_actuator=actuator)
 
         elif option == "3":
             feature = input("Enter the actuator category (humidity, temperature, light): ")
             actuator = input("Enter the actuator (irrigator, heater, cooler, lights, curtains): ")
             value = float(input("Enter the desired value: "))
-            send_command("set", "actuator", target_feature=feature, target_actuator=actuator, value=value)
+            send_command("SET", "actuator", target_feature=feature, target_actuator=actuator, value=value)
 
         elif option == "4":
             print("Exiting the program.")

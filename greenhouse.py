@@ -101,7 +101,7 @@ class Greenhouse:
         while True:
             try:
                 conn = socket.create_connection((gateway_ip, gateway_port))
-                response = greenhouse_pb2.GeneralResponse()
+                response = greenhouse_pb2.Response()
 
                 # Humidity Sensor
                 humidity_sensor = response.device_statuses.add()
@@ -187,7 +187,7 @@ class Greenhouse:
             command = greenhouse_pb2.Command()
             command.ParseFromString(data)
             if command.command == "GET":
-                response = greenhouse_pb2.GeneralResponse()
+                response = greenhouse_pb2.Response()
                 response.response = "Data fetched"
                 for feature, actuator in self.actuators.items():
                     for act_name, act in actuator.items():

@@ -50,7 +50,7 @@ message DeviceStatus {
   string unit = 6;
 }
 
-message GeneralResponse {
+message Response {
   string response = 1;
   repeated DeviceStatus device_statuses = 2;
 }
