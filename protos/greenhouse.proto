@@ -2,36 +2,6 @@ syntax = "proto3";
 
 package greenhouse;
 
-message HumidityControl {
-  float humidity_value = 1;
-  string humidity_unit = 5;
-  bool irrigator_on = 2;
-  int32 irrigator_intensity = 3;
-  string irrigator_unit = 4;
-}
-
-message TemperatureControl {
-  float temperature_value = 1;
-  string temperature_unit = 8;
-  bool heater_on = 2;
-  int32 heater_intensity = 3;
-  string heater_unit = 4;
-  bool cooler_on = 5;
-  int32 cooler_intensity = 6;
-  string cooler_unit = 7;
-}
-
-message LightControl {
-  float light_value = 1;
-  string light_unit = 8;
-  bool lights_on = 2;
-  int32 lights_intensity = 3;
-  string lights_unit = 4;
-  bool curtains_open = 5;
-  int32 curtains_intensity = 6;
-  string curtains_unit = 7;
-}
-
 message Command{
   string command = 1;
   string feature = 2;
@@ -52,6 +22,6 @@ message DeviceStatus {
 
 message Response {
   string response = 1;
-  repeated DeviceStatus device_statuses = 2;
+  repeated DeviceStatus device_status = 2;
 }
 
