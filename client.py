@@ -2,16 +2,14 @@ import socket
 import logging
 import greenhouse_pb2
 
-def send_command(command, device, target_feature="", target_actuator="", value=0):
+def send_command(command, name, value=0):
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(('localhost', 50002))  # gateway ip and port
 
         cmd = greenhouse_pb2.Command()
         cmd.command = command
-        cmd.device = device
-        cmd.feature = target_feature
-        cmd.actuator = target_actuator
+        cmd.name = name
         cmd.value = value
 
         client_socket.send(cmd.SerializeToString())
@@ -50,17 +48,17 @@ if __name__ == "__main__":
         option = input("Choose an option: ")
 
         if option == "1":
-            feature = input("Enter the sensor (humidity, temperature, light): ")
-            send_command("GET", "sensor", target_feature=feature)
+            sensor = input("Enter the sensor (Humidity, Temperature, Light): ")
+            send_command("GET", name = sensor)
 
         elif option == "2":
-            actuator = input("Enter the actuator (irrigator, heater, cooler, lights, curtains): ")
-            send_command("GET", "actuator", target_actuator=actuator)
+            actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")
+            send_command("GET", actuator)
 
         elif option == "3":
-            actuator = input("Enter the actuator (irrigator, heater, cooler, lights, curtains): ")
+            actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")
             value = float(input("Enter the desired value: "))
-            send_command("SET", "actuator", target_actuator=actuator, value=value)
+            send_command("SET", actuator, value=value)
 
         elif option == "4":
             print("Exiting the program.")

@@ -1,15 +1,10 @@
 import socket
 import threading
 import time
-import pymongo
 import greenhouse_pb2
 
 MULTICAST_GROUP = ('224.1.1.1', 50010)
 BUFFER_SIZE = 1024
-
-client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["greenhouse"]
-collection = db["devices"]
 
 class Device:
     def __init__(self, type, port, name):
@@ -19,13 +14,14 @@ class Device:
 
     def start(self):
         self.multicast()
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind(("localhost", self.port))
-        server.listen(5)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("localhost", self.port))
+        sock.listen(5)
         print(f"{self.type} {self.name} listening on port {self.port}")
         
         while True:
-            conn, addr = server.accept()
+            conn, addr = sock.accept()
             threading.Thread(target=self.handle_request, args=(conn,)).start()
 
     def handle_request(self, conn):
@@ -36,7 +32,9 @@ class Device:
             
             if command.command == "SET":
                 self.set_status(command.value)
-                conn.send(b"Status updated successfully.")
+                response = greenhouse_pb2.Response()
+                response.response = "Status updated successfully."
+                conn.send(response.SerializeToString())
             elif command.command == "GET":
                 response = self.get_status()
                 conn.send(response.SerializeToString())
@@ -49,37 +47,46 @@ class Device:
         raise NotImplementedError
 
     def multicast(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(5)
+        def device_registration():
+            while True:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.settimeout(5)
 
-        device_info = greenhouse_pb2.DeviceRegistration(
-            name=self.name,
-            type=self.type,
-            port=self.port
-        )
+                device_info = greenhouse_pb2.DeviceRegistration(
+                    name=self.name,
+                    type=self.type,
+                    port=self.port
+                )
 
-        print(f"{self.name} trying to register with gateway")
-        
-        while True:
-            try:
-                sock.sendto(device_info.SerializeToString(), MULTICAST_GROUP)
-                print(f"{self.name} sent multicast registration to {MULTICAST_GROUP}")
-        
-                data, addr = sock.recvfrom(BUFFER_SIZE)
+                print(f"{self.name} trying to register with gateway")
+                
+                
+                try:
+                    sock.sendto(device_info.SerializeToString(), MULTICAST_GROUP)
+                    print(f"{self.name} sent multicast registration to {MULTICAST_GROUP}")
+            
+                    data, addr = sock.recvfrom(BUFFER_SIZE)
 
-                response = greenhouse_pb2.ResponseRegistration()
-                response.ParseFromString(data)
+                    response = greenhouse_pb2.ResponseRegistration()
+                    response.ParseFromString(data)
 
-                if response.status == "registered" and response.device == self.name:
-                    print(f"{self.name} registered on gateway: {response}")
+                    if response.status == "registered" and response.device == self.name:
+                        print(f"{self.name} registered on gateway: {response}")
+                        while True:
+                            sock.sendto(device_info.SerializeToString(), MULTICAST_GROUP)
+                            print(f"{self.name} sent multicast registration to {MULTICAST_GROUP} again for confirmation")
+                            time.sleep(60)
+                        break
+                except socket.timeout:
+                    print(f"{self.name} not registered")
+                    continue
+                except Exception as e:
+                    print(f"Error on device registration{self.name}: {e}")
                     break
-            except socket.timeout:
-                print(f"{self.name} not registered")
-                continue
-            except Exception as e:
-                print(f"Error on device registration{self.name}: {e}")
-                break
-        sock.close()
+                finally:
+                    sock.close()
+        threading.Thread(target=device_registration, daemon=True).start()
          
 
 class Sensor(Device):
@@ -90,7 +97,7 @@ class Sensor(Device):
 
     def get_status(self):
         response = greenhouse_pb2.Response()
-        device_status = response.device_statuses.add()
+        device_status = response.device_status.add()
         device_status.device = self.type
         device_status.value = self.value
         device_status.unit = self.unit
@@ -119,7 +126,7 @@ class Actuator(Device):
 
     def get_status(self):
         response = greenhouse_pb2.Response()
-        device_status = response.device_statuses.add()
+        device_status = response.device_status.add()
         device_status.device = self.type
         device_status.on = self.on
         device_status.value = self.intensity

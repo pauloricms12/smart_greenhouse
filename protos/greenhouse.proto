@@ -15,10 +15,9 @@ message ResponseRegistration{
 
 message Command{
   string command = 1;
-  string feature = 2;
-  string device = 3;
-  string actuator = 4;
-  float value = 5;
+  string name = 2;
+  float value = 3;
+  float basevalue = 4;
 }
 
 message DeviceStatus {

@@ -2,12 +2,13 @@ import socket
 import threading
 import queue
 from concurrent import futures
-import pymongo
 import greenhouse_pb2
+import pymongo
 
 BUFFER_SIZE = 1024
 PORT = 50000
 GREENHOUSE_PORT = 50001
+GREENHOUSE_IP = 'localhost'
 CLIENT_PORT = 50002
 MULTICAST_GROUP = ('224.1.1.1', 50010)
 DEVICE_PORTS = {}
@@ -37,37 +38,41 @@ def listen_multicast():
             DEVICE_PORTS[device_info.name] = device_info.port
             print(f"[GATEWAY] Received multicast from {addr}: {device_info}")
             
+            collection.update_one(
+                {"name": device_info.name},
+                {"$set": {
+                    "name": device_info.name,
+                    "type": device_info.type,
+                    "port": device_info.port
+                }},
+                upsert=True
+            )
+
             confirmation = greenhouse_pb2.ResponseRegistration(
                     status="registered",
                     device=device_info.name
             )
             sock.sendto(confirmation.SerializeToString(), addr)
-        
-            # collection.update_one(
-            #     {"name": device_info['name']},
-            #     {"$set": device_info},
-            #     upsert=True
-            # )
 
         except Exception as e:
             print(f"[GATEWAY] Error processing multicast: {e}")
 
 
 def send_to_device(request):
-    port = DEVICE_PORTS.get(request.device)
+    port = DEVICE_PORTS.get(request.name)
     if not port:
-        print(f"[GATEWAY] Device {request.device} not found.")
+        print(f"[GATEWAY] Device {request.name} not found.")
         return None
 
     try:
-        with socket.create_connection(("localhost", port)) as s:
+        with socket.create_connection((GREENHOUSE_IP, port)) as s:
             s.send(request.SerializeToString())
             data = s.recv(BUFFER_SIZE)
             response = greenhouse_pb2.Response()
             response.ParseFromString(data)
             return response
     except Exception as e:
-        print(f"[GATEWAY] Error connecting to {request.device} on port {port}: {e}")
+        print(f"[GATEWAY] Error connecting to {request.name} on port {port}: {e}")
         return None
 
 def handle_client(conn, addr):
@@ -79,7 +84,7 @@ def handle_client(conn, addr):
                 break
             request = greenhouse_pb2.Command()
             request.ParseFromString(data)
-            print(f"[CLIENT] Command received: {request.command} for {request.device}")
+            print(f"[CLIENT] Command received: {request.command} for {request.name}")
 
             response = send_to_device(request)
             if response:
@@ -95,7 +100,7 @@ def start_gateway(port, handler):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(("0.0.0.0", port))
     s.listen(5)
-    print(f"[SERVER] Listening on port {port}...")
+    print(f"[SERVER] Listening Clients on port {port}...")
 
     while True:
         conn, addr = s.accept()
@@ -103,6 +108,5 @@ def start_gateway(port, handler):
 
 if __name__ == "__main__":
     threading.Thread(target=listen_multicast, daemon=True).start()
-    with futures.ThreadPoolExecutor(max_workers=2) as executor:
-        executor.submit(start_gateway, CLIENT_PORT, handle_client)
+    start_gateway(CLIENT_PORT, handle_client)
 
