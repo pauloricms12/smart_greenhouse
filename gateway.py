@@ -11,7 +11,6 @@ CLIENT_PORT = 50002
 MULTICAST_GROUP = ('224.1.1.1', 50010)
 DEVICE_PORTS = {}
 
-
 def listen_multicast():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

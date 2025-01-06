@@ -108,6 +108,10 @@ class Sensor(Device):
             self.value = base_value * (1 - (curtains.intensity / 100))
         elif increment == 0 and base_value is None: #lamps
             self.value = max_value
+        elif increment < 0:#cooler
+            self.value += increment
+            if max_value is not None and self.value < max_value:
+                self.value = max_value
         else: #others
             self.value += increment
             if max_value is not None and self.value > max_value:
@@ -129,6 +133,7 @@ class Actuator(Device):
         device_status = response.device_status.add()
         device_status.device = self.type
         device_status.on = self.on
+        device_status.status = "Ligado" if self.on else "Desligado"
         device_status.value = self.intensity
         device_status.unit = self.unit
         return response
