@@ -1,9 +1,7 @@
 import socket
 import threading
-import queue
 from concurrent import futures
 import greenhouse_pb2
-import pymongo
 
 BUFFER_SIZE = 1024
 PORT = 50000
@@ -13,11 +11,6 @@ CLIENT_PORT = 50002
 MULTICAST_GROUP = ('224.1.1.1', 50010)
 DEVICE_PORTS = {}
 
-client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["greenhouse"]
-collection = db["devices"]
-
-data_buffer = queue.Queue()
 
 def listen_multicast():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -37,16 +30,6 @@ def listen_multicast():
 
             DEVICE_PORTS[device_info.name] = device_info.port
             print(f"[GATEWAY] Received multicast from {addr}: {device_info}")
-            
-            collection.update_one(
-                {"name": device_info.name},
-                {"$set": {
-                    "name": device_info.name,
-                    "type": device_info.type,
-                    "port": device_info.port
-                }},
-                upsert=True
-            )
 
             confirmation = greenhouse_pb2.ResponseRegistration(
                     status="registered",

@@ -49,14 +49,23 @@ if __name__ == "__main__":
 
         if option == "1":
             sensor = input("Enter the sensor (Humidity, Temperature, Light): ")
+            if sensor not in ["Humidity", "Temperature", "Light"]:
+                print("Invalid option. Please try again.")
+                continue
             send_command("GET", name = sensor)
 
         elif option == "2":
             actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")
+            if actuator not in ['Irrigator', 'Irrigator', 'Heater', 'Cooler', 'Lamps', 'Curtains']:
+                print("Invalid option. Please try again.")
+                continue
             send_command("GET", actuator)
 
         elif option == "3":
             actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")
+            if actuator not in ['Irrigator', 'Irrigator', 'Heater', 'Cooler', 'Lamps', 'Curtains']:
+                print("Invalid option. Please try again.")
+                continue
             value = float(input("Enter the desired value: "))
             send_command("SET", actuator, value=value)
 
