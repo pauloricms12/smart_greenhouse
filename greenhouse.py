@@ -1,6 +1,5 @@
 import socket
 import threading
-import json
 import time
 import pymongo
 import greenhouse_pb2
@@ -19,7 +18,7 @@ class Device:
         self.name = name
 
     def start(self):
-        self.register_with_gateway()
+        self.multicast()
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind(("localhost", self.port))
         server.listen(5)
@@ -49,16 +48,39 @@ class Device:
     def get_status(self):
         raise NotImplementedError
 
-    def register_with_gateway(self):
+    def multicast(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        device_info = {
-            "name": self.name,
-            "type": self.type,
-            "port": self.port
-        }
-        sock.sendto(json.dumps(device_info).encode('utf-8'), MULTICAST_GROUP)
-        print(f"{self.name} sent multicast registration to {MULTICAST_GROUP}")
-        sock.close()    
+        sock.settimeout(5)
+
+        device_info = greenhouse_pb2.DeviceRegistration(
+            name=self.name,
+            type=self.type,
+            port=self.port
+        )
+
+        print(f"{self.name} trying to register with gateway")
+        
+        while True:
+            try:
+                sock.sendto(device_info.SerializeToString(), MULTICAST_GROUP)
+                print(f"{self.name} sent multicast registration to {MULTICAST_GROUP}")
+        
+                data, addr = sock.recvfrom(BUFFER_SIZE)
+
+                response = greenhouse_pb2.ResponseRegistration()
+                response.ParseFromString(data)
+
+                if response.status == "registered" and response.device == self.name:
+                    print(f"{self.name} registered on gateway: {response}")
+                    break
+            except socket.timeout:
+                print(f"{self.name} not registered")
+                continue
+            except Exception as e:
+                print(f"Error on device registration{self.name}: {e}")
+                break
+        sock.close()
+         
 
 class Sensor(Device):
     def __init__(self, type, port, name, value=0.0, unit=""):  
@@ -104,7 +126,7 @@ class Actuator(Device):
         device_status.unit = self.unit
         return response
 
-def monitor_environment(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains):
+def actuator_on(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains):
     base_light_value = light_sensor.value
     while True:
         if irrigator.on:
@@ -140,5 +162,5 @@ if __name__ == "__main__":
     threading.Thread(target=lamps.start).start()
     threading.Thread(target=curtains.start).start()
 
-    threading.Thread(target=monitor_environment, args=(
+    threading.Thread(target=actuator_on, args=(
         humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains)).start()

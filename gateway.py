@@ -1,7 +1,6 @@
 import socket
 import threading
 import queue
-import json
 from concurrent import futures
 import pymongo
 import greenhouse_pb2
@@ -29,17 +28,29 @@ def listen_multicast():
 
     print(f"[GATEWAY] Listening for multicast messages on {MULTICAST_GROUP}")
     while True:
-        data, addr = sock.recvfrom(BUFFER_SIZE)
-        device_info = json.loads(data.decode('utf-8'))
-        DEVICE_PORTS[device_info['name']] = device_info['port']
-        print(f"[GATEWAY] Received multicast from {addr}: {data.decode('utf-8')}")
-        print(f"[DISCOVERY] Device {device_info['name']} registered on port {device_info['port']}")
+        try:
+
+            data, addr = sock.recvfrom(BUFFER_SIZE)
+            device_info = greenhouse_pb2.DeviceRegistration()
+            device_info.ParseFromString(data)
+
+            DEVICE_PORTS[device_info.name] = device_info.port
+            print(f"[GATEWAY] Received multicast from {addr}: {device_info}")
+            
+            confirmation = greenhouse_pb2.ResponseRegistration(
+                    status="registered",
+                    device=device_info.name
+            )
+            sock.sendto(confirmation.SerializeToString(), addr)
         
-        collection.update_one(
-            {"name": device_info['name']},
-            {"$set": device_info},
-            upsert=True
-        )
+            # collection.update_one(
+            #     {"name": device_info['name']},
+            #     {"$set": device_info},
+            #     upsert=True
+            # )
+
+        except Exception as e:
+            print(f"[GATEWAY] Error processing multicast: {e}")
 
 
 def send_to_device(request):

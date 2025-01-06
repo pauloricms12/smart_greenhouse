@@ -2,6 +2,17 @@ syntax = "proto3";
 
 package greenhouse;
 
+message DeviceRegistration{
+  string name = 1;
+  string type = 2;
+  int32 port = 3;
+}
+
+message ResponseRegistration{
+    string status = 1;
+    string device = 2;
+}
+
 message Command{
   string command = 1;
   string feature = 2;
