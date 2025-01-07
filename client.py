@@ -2,10 +2,12 @@ import socket
 import logging
 import greenhouse_pb2
 
+GATEWAY_IP = "18.204.201.1"
+
 def send_command(command, name, value=0):
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect(('localhost', 50002))  # gateway ip and port
+        client_socket.connect((GATEWAY_IP, 50002)) 
 
         cmd = greenhouse_pb2.Command()
         cmd.command = command
