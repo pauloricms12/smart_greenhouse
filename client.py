@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
         elif option == "3":
             actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")
-            if actuator not in ['Irrigator', 'Irrigator', 'Heater', 'Cooler', 'Lamps', 'Curtains']:
+            if actuator not in ['Irrigator', 'Heater', 'Cooler', 'Lamps', 'Curtains']:
                 print("Invalid option. Please try again.")
                 continue
             value = float(input("Enter the desired value: "))
