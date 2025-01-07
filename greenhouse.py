@@ -2,6 +2,7 @@ import socket
 import threading
 import time
 import greenhouse_pb2
+import random
 
 MULTICAST_GROUP = ('224.1.1.1', 50010)
 BUFFER_SIZE = 1024
@@ -154,6 +155,16 @@ def actuator_on(humidity_sensor, temperature_sensor, light_sensor, irrigator, he
 
         time.sleep(1)
 
+def actuator_off(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains):
+    while True:
+        if not irrigator.on:
+            humidity_sensor.value += random.choice([0.5, -0.5])
+        if not heater.on and not cooler.on:
+            temperature_sensor.value += random.choice([0.1, -0.1])
+        if not lamps.on and not curtains.on:
+            light_sensor.value += random.choice([1, -1])
+        time.sleep(5)
+
 if __name__ == "__main__":
     temperature_sensor = Sensor("Sensor", 6001, "Temperature", 22.0, "°C")
     humidity_sensor = Sensor("Sensor", 6003, "Humidity", 60.0, "%")
@@ -175,4 +186,6 @@ if __name__ == "__main__":
     threading.Thread(target=curtains.start).start()
 
     threading.Thread(target=actuator_on, args=(
+        humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains)).start()
+    threading.Thread(target=actuator_off, args=(
         humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains)).start()
