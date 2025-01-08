@@ -115,6 +115,7 @@ def handle_client(conn, addr):
                     device_status_proto.type = found_status.type
                     device_status_proto.name = found_status.name
                     device_status_proto.value = found_status.value
+                    device_status_proto.status = "Ligado" if found_status.value else "Desligado"
                     device_status_proto.unit = found_status.unit
                     device_status_proto.feature = found_status.feature
                     conn.send(response.SerializeToString())

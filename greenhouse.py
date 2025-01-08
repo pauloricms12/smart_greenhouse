@@ -75,7 +75,7 @@ class Device:
                     response = greenhouse_pb2.ResponseRegistration()
                     response.ParseFromString(data)
 
-                    if response.status == "registered" and response.name == self.name:
+                    if response.status == "registered" and response.device == self.name:
                         print(f"{self.name} registered on gateway: {response}")
                         while True:
                             sock.sendto(device_info.SerializeToString(), MULTICAST_GROUP)
@@ -150,22 +150,23 @@ def updates(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater
     curtains_base_value = None
     while True:
         if irrigator.on:
-            humidity_sensor.update_value(irrigator.value * 1, max_value=100)
+            humidity_sensor.update_value(irrigator.value * 1, max_value=99.5)
         if heater.on:
-            temperature_sensor.update_value(0.5, max_value=heater.value)
+            temperature_sensor.update_value(0.5, max_value=heater.value - 0.1)
         if cooler.on:
-            temperature_sensor.update_value(-0.5, max_value=cooler.value)
+            temperature_sensor.update_value(-0.5, max_value=cooler.value + 0.1)
         if lamps.on:
             light_sensor.update_value(0, max_value=lamps.value)
         if curtains.on:
             if curtains_base_value is None:
                 curtains_base_value = light_sensor.value
-            light_sensor.update_value(0, base_value=curtains_base_value, curtains_value=curtains.value)
+            light_sensor.update_value(0, base_value=curtains_base_value, curtains_intensity=curtains.value)
         else: #turn off curtains
             if curtains_base_value is not None:
-                light_sensor.update_value(0, base_value=curtains_base_value, curtains_value=curtains.value)
+                light_sensor.update_value(0, base_value=curtains_base_value, curtains_intensity=curtains.value)
             curtains_base_value = None
         humidity_sensor.value += random.choice([0.5, -0.5])
+        humidity_sensor.value = min(max(humidity_sensor.value, 0), 100)
         temperature_sensor.value += random.choice([0.1, -0.1])
         light_sensor.value += random.choice([1, -1])
 
