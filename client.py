@@ -2,7 +2,7 @@ import socket
 import logging
 import greenhouse_pb2
 
-GATEWAY_IP = "18.204.201.1"
+GATEWAY_IP = "localhost"
 
 def send_command(command, name, value=0):
     try:
@@ -54,7 +54,7 @@ if __name__ == "__main__":
             if sensor not in ["Humidity", "Temperature", "Light"]:
                 print("Invalid option. Please try again.")
                 continue
-            send_command("GET", name = sensor)
+            send_command("GET", name = f'{sensor} Sensor')
 
         elif option == "2":
             actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")

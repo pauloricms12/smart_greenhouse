@@ -6,12 +6,15 @@ import random
 
 MULTICAST_GROUP = ('224.1.1.1', 50010)
 BUFFER_SIZE = 1024
+GATEWAY_IP = 'localhost'
+GATEWAY_PORT = 50001
 
 class Device:
-    def __init__(self, type, port, name):
+    def __init__(self, type, feature, port, name):
         self.type = type
         self.port = port
         self.name = name
+        self.feature = feature
 
     def start(self):
         self.multicast()
@@ -60,7 +63,7 @@ class Device:
                     port=self.port
                 )
 
-                print(f"{self.name} trying to register with gateway")
+                print(f"{self.name} sending multicast")
                 
                 
                 try:
@@ -72,7 +75,7 @@ class Device:
                     response = greenhouse_pb2.ResponseRegistration()
                     response.ParseFromString(data)
 
-                    if response.status == "registered" and response.device == self.name:
+                    if response.status == "registered" and response.name == self.name:
                         print(f"{self.name} registered on gateway: {response}")
                         while True:
                             sock.sendto(device_info.SerializeToString(), MULTICAST_GROUP)
@@ -91,22 +94,25 @@ class Device:
          
 
 class Sensor(Device):
-    def __init__(self, type, port, name, value=0.0, unit=""):  
-        super().__init__(type, port, name)
+    def __init__(self, type, feature, port, name, value=0.0, unit=""):  
+        super().__init__(type, feature, port, name)
         self.value = value
         self.unit = unit
 
     def get_status(self):
         response = greenhouse_pb2.Response()
         device_status = response.device_status.add()
-        device_status.device = self.type
+        device_status.type = self.type
         device_status.value = self.value
         device_status.unit = self.unit
         return response
     
-    def update_value(self, increment, max_value=None, base_value=None):
+    def update_value(self, increment, max_value=None, base_value=None, curtains_intensity=None):
         if increment == 0 and base_value is not None: #curtains
-            self.value = base_value * (1 - (curtains.intensity / 100))
+            if curtains_intensity is not None and curtains_intensity > 0:
+                self.value = base_value * (1 - (curtains_intensity / 100))
+            else: #if turn off courtains
+                self.value = base_value / (curtains_intensity / 100) if curtains_intensity and curtains_intensity > 0 else base_value
         elif increment == 0 and base_value is None: #lamps
             self.value = max_value
         elif increment < 0:#cooler
@@ -119,73 +125,156 @@ class Sensor(Device):
                 self.value = max_value
 
 class Actuator(Device):
-    def __init__(self, type, port, name, unit=""):  
-        super().__init__(type, port, name)
+    def __init__(self, type, feature, port, name, unit=""):  
+        super().__init__(type, feature, port, name)
         self.on = False
-        self.intensity = 0
+        self.value = 0
         self.unit = unit
 
     def set_status(self, value):
-        self.intensity = value
+        self.value = value
         self.on = value > 0
 
     def get_status(self):
         response = greenhouse_pb2.Response()
         device_status = response.device_status.add()
-        device_status.device = self.type
+        device_status.name = self.name
+        device_status.type = self.type
         device_status.on = self.on
         device_status.status = "Ligado" if self.on else "Desligado"
-        device_status.value = self.intensity
+        device_status.value = self.value
         device_status.unit = self.unit
         return response
 
-def actuator_on(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains):
-    base_light_value = light_sensor.value
+def updates(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains):
+    curtains_base_value = None
     while True:
         if irrigator.on:
-            humidity_sensor.update_value(irrigator.intensity * 0.1, max_value=100)
+            humidity_sensor.update_value(irrigator.value * 1, max_value=100)
         if heater.on:
-            temperature_sensor.update_value(0.01, max_value=heater.intensity)
+            temperature_sensor.update_value(0.5, max_value=heater.value)
         if cooler.on:
-            temperature_sensor.update_value(-0.01, max_value=cooler.intensity)
+            temperature_sensor.update_value(-0.5, max_value=cooler.value)
         if lamps.on:
-            light_sensor.update_value(0, max_value = lamps.intensity)
+            light_sensor.update_value(0, max_value=lamps.value)
         if curtains.on:
-            light_sensor.update_value(0, base_value=base_light_value)
+            if curtains_base_value is None:
+                curtains_base_value = light_sensor.value
+            light_sensor.update_value(0, base_value=curtains_base_value, curtains_value=curtains.value)
+        else: #turn off curtains
+            if curtains_base_value is not None:
+                light_sensor.update_value(0, base_value=curtains_base_value, curtains_value=curtains.value)
+            curtains_base_value = None
+        humidity_sensor.value += random.choice([0.5, -0.5])
+        temperature_sensor.value += random.choice([0.1, -0.1])
+        light_sensor.value += random.choice([1, -1])
 
-        time.sleep(1)
+        time.sleep(2)
 
-def actuator_off(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains):
+def send_status_to_gateway(devices):
     while True:
-        if not irrigator.on:
-            humidity_sensor.value += random.choice([0.5, -0.5])
-        if not heater.on and not cooler.on:
-            temperature_sensor.value += random.choice([0.1, -0.1])
-        if not lamps.on and not curtains.on:
-            light_sensor.value += random.choice([1, -1])
-        time.sleep(5)
+        try:
+            with socket.create_connection((GATEWAY_IP, GATEWAY_PORT)) as s:
+
+                response = greenhouse_pb2.Response()
+                for device in devices:
+                    device_status = response.device_status.add()
+                    device_status.name = device.name
+                    device_status.type = device.type
+                    device_status.value = device.value
+                    device_status.unit = device.unit
+                    device_status.feature = device.feature
+
+                s.sendall(response.SerializeToString())
+                print("[Greenhouse] Sent status to Gateway.")
+
+            time.sleep(2)  
+        except Exception as e:
+            print(f"[Greenhouse] Error sending status to Gateway: {e}")
+            time.sleep(1)
 
 if __name__ == "__main__":
-    temperature_sensor = Sensor("Sensor", 6001, "Temperature", 22.0, "°C")
-    humidity_sensor = Sensor("Sensor", 6003, "Humidity", 60.0, "%")
-    light_sensor = Sensor("Sensor", 6004, "Light", 75.0, "lux")
-
-    irrigator = Actuator("Actuator", 6005, "Irrigator", "L/h")
-    heater = Actuator("Actuator", 6006, "Heater", "°C")
-    cooler = Actuator("Actuator", 6007, "Cooler", "°C")
-    lamps = Actuator("Actuator", 6008, "Lamps", "lux")
-    curtains = Actuator("Actuator", 6009, "Curtains", "%")
-
+    # Sensores
+    temperature_sensor = Sensor(
+        type="Sensor", 
+        port=6001, 
+        name="Temperature Sensor", 
+        feature="Temperature", 
+        value=22.0, 
+        unit="°C"
+    )
     threading.Thread(target=temperature_sensor.start).start()
+
+    humidity_sensor = Sensor(
+        type="Sensor", 
+        port=6002, 
+        name="Humidity Sensor", 
+        feature="Humidity", 
+        value=60.0, 
+        unit="%"
+    )
     threading.Thread(target=humidity_sensor.start).start()
+
+    light_sensor = Sensor(
+        type="Sensor", 
+        port=6003, 
+        name="Light Sensor", 
+        feature="Light", 
+        value=75.0, 
+        unit="lux"
+    )
     threading.Thread(target=light_sensor.start).start()
+
+    # Atuadores
+    irrigator = Actuator(
+        type="Actuator", 
+        feature="Humidity",  
+        port=6004, 
+        name="Irrigator", 
+        unit="L/h"
+    )
     threading.Thread(target=irrigator.start).start()
+
+    heater = Actuator(
+        type="Actuator", 
+        feature="Temperature",  
+        port=6005, 
+        name="Heater", 
+        unit="°C"
+    )
     threading.Thread(target=heater.start).start()
+
+    cooler = Actuator(
+        type="Actuator", 
+        feature="Temperature",  
+        port=6006, 
+        name="Cooler", 
+        unit="°C"
+    )
     threading.Thread(target=cooler.start).start()
+
+    lamps = Actuator(
+        type="Actuator",
+        feature="Light",  
+        port=6007, 
+        name="Lamps", 
+        unit="lux"
+    )
     threading.Thread(target=lamps.start).start()
+
+    curtains = Actuator(
+        type="Actuator",
+        feature="Light",  
+        port=6008, 
+        name="Curtains", 
+        unit="%"
+    )
     threading.Thread(target=curtains.start).start()
 
-    threading.Thread(target=actuator_on, args=(
-        humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains)).start()
-    threading.Thread(target=actuator_off, args=(
-        humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains)).start()
+
+    devices = [humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains]
+
+   
+
+    threading.Thread(target=updates, args=(*devices,), daemon=True).start()
+    threading.Thread(target=send_status_to_gateway, args=(devices, ), daemon=True).start()
