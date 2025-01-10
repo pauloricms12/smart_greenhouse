@@ -141,7 +141,7 @@ class Actuator(Device):
         device_status.name = self.name
         device_status.type = self.type
         device_status.on = self.on
-        device_status.status = "Ligado" if self.on else "Desligado"
+        device_status.status = "On" if self.on else "Off"
         device_status.value = self.value
         device_status.unit = self.unit
         return response
@@ -182,6 +182,7 @@ def send_status_to_gateway(devices):
                     device_status = response.device_status.add()
                     device_status.name = device.name
                     device_status.type = device.type
+                    device_status.status = device.status
                     device_status.value = device.value
                     device_status.unit = device.unit
                     device_status.feature = device.feature
