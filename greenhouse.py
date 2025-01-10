@@ -182,7 +182,7 @@ def send_status_to_gateway(devices):
                     device_status = response.device_status.add()
                     device_status.name = device.name
                     device_status.type = device.type
-                    device_status.status = device.status
+                    device_status.status = "On" if device_status.value else "Off"
                     device_status.value = device.value
                     device_status.unit = device.unit
                     device_status.feature = device.feature
