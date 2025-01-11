@@ -266,17 +266,18 @@ if __name__ == "__main__":
     )
 
     threading.Thread(target=temperature_sensor.start).start()
-    threading.Thread(target=humidity_sensor.start).start()
-    threading.Thread(target=light_sensor.start).start()
-    threading.Thread(target=irrigator.start).start()
     threading.Thread(target=heater.start).start()
     threading.Thread(target=cooler.start).start()
-    threading.Thread(target=lamps.start).start()
-    threading.Thread(target=curtains.start).start()
+
+    # threading.Thread(target=humidity_sensor.start).start()
+    # threading.Thread(target=irrigator.start).start()
+    
+    #threading.Thread(target=light_sensor.start).start()
+    #threading.Thread(target=lamps.start).start()
+    #threading.Thread(target=curtains.start).start()
 
 
     devices = [humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains]
-    #devices = []
 
     threading.Thread(target=updates, args=(*devices,), daemon=True).start()
     threading.Thread(target=send_status_to_gateway, args=(devices, ), daemon=True).start()
