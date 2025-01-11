@@ -1,7 +1,7 @@
 import socket
 import threading
 import time
-import greenhouse_pb2
+import greenhouse_pb2 as greenhouse_pb2
 import random
 
 MULTICAST_GROUP = ('224.1.1.1', 50010)
@@ -145,14 +145,17 @@ class Actuator(Device):
         device_status.unit = self.unit
         return response
 
-# Centralize active devices
 def updates(*devices):
     curtains_base_value = None
     while True:
         for device in devices:
-            if isinstance(device, Sensor) and device.feature == "Humidity" and any(act.name == "Irrigator" and act.on for act in devices if isinstance(act, Actuator)):
-                device.update_value(3, max_value=99.5)
+            if isinstance(device, Sensor) and device.feature == "Humidity":
+                device.value += random.choice([-1, 1])
+                if any(act.name == "Irrigator" and act.on for act in devices if isinstance(act, Actuator)):
+                    device.update_value(3, max_value=99.5)
+                    
             elif isinstance(device, Sensor) and device.feature == "Temperature":
+                device.value += random.choice([-0.5, 0.5])
                 heater = next((act for act in devices if act.name == "Heater" and act.on), None)
                 cooler = next((act for act in devices if act.name == "Cooler" and act.on), None)
                 if heater:
@@ -160,6 +163,7 @@ def updates(*devices):
                 if cooler:
                     device.update_value(-2, max_value=cooler.value + 0.1)
             elif isinstance(device, Sensor) and device.feature == "Light":
+                device.value += random.choice([-1, 1])
                 lamps = next((act for act in devices if act.name == "Lamps" and act.on), None)
                 curtains = next((act for act in devices if act.name == "Curtains"), None)
                 if lamps:
@@ -172,7 +176,7 @@ def updates(*devices):
                     else:
                         curtains_base_value = None
 
-        time.sleep(1)
+        time.sleep(2)
 
 def send_status_to_gateway(devices):
     while True:
@@ -198,12 +202,11 @@ def send_status_to_gateway(devices):
             time.sleep(1)
 
 if __name__ == "__main__":
-    # Sensores
+
     temperature_sensor = Sensor("Sensor", "Temperature", 6001, "Temperature Sensor", 22.0, "°C")
     humidity_sensor = Sensor("Sensor", "Humidity", 6002, "Humidity Sensor", 60.0, "%")
     light_sensor = Sensor("Sensor", "Light", 6003, "Light Sensor", 75.0, "lux")
 
-    # Atuadores
     irrigator = Actuator("Actuator", "Humidity", 6004, "Irrigator", "L/h")
     heater = Actuator("Actuator", "Temperature", 6005, "Heater", "°C")
     cooler = Actuator("Actuator", "Temperature", 6006, "Cooler", "°C")
@@ -211,8 +214,14 @@ if __name__ == "__main__":
     curtains = Actuator("Actuator", "Light", 6008, "Curtains", "%")
 
     active_devices = [
+        temperature_sensor,
+        humidity_sensor,
+        light_sensor,
+        irrigator,
+        heater,
         cooler,
-        temperature_sensor
+        lamps,
+        curtains
     ]
 
     for device in active_devices:

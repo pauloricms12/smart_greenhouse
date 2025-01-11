@@ -1,11 +1,11 @@
 import socket
 import logging
-import greenhouse_pb2
+import greenhouse_pb2 as greenhouse_pb2
 
 GATEWAY_IP = "localhost"
 GATEWAY_PORT = 50002
 
-def send_command(command, name, value=0):
+def send_command(command, name="", value=0):
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((GATEWAY_IP, GATEWAY_PORT)) 
@@ -43,28 +43,16 @@ if __name__ == "__main__":
 
     while True:
         print("\nCommand Menu:")
-        print("1. Check sensor status")
-        print("2. Check actuator status")
-        print("3. Control an actuator")
-        print("4. Exit")
+        print("1. Check devices statuses")
+        print("2. Control an actuator")
+        print("3. Exit")
 
         option = input("Choose an option: ")
 
         if option == "1":
-            sensor = input("Enter the sensor (Humidity, Temperature, Light): ")
-            if sensor not in ["Humidity", "Temperature", "Light"]:
-                print("Invalid option. Please try again.")
-                continue
-            send_command("GET", name = f'{sensor} Sensor')
+            send_command("GET")
 
         elif option == "2":
-            actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")
-            if actuator not in ['Irrigator', 'Irrigator', 'Heater', 'Cooler', 'Lamps', 'Curtains']:
-                print("Invalid option. Please try again.")
-                continue
-            send_command("GET", actuator)
-
-        elif option == "3":
             actuator = input("Enter the actuator (Irrigator, Heater, Cooler, Lamps, Curtains): ")
             if actuator not in ['Irrigator', 'Heater', 'Cooler', 'Lamps', 'Curtains']:
                 print("Invalid option. Please try again.")
@@ -72,7 +60,7 @@ if __name__ == "__main__":
             value = float(input("Enter the desired value: "))
             send_command("SET", actuator, value=value)
 
-        elif option == "4":
+        elif option == "3":
             print("Exiting the program.")
             break
 
