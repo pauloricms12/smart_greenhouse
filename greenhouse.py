@@ -150,11 +150,11 @@ def updates(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater
     curtains_base_value = None
     while True:
         if irrigator.on:
-            humidity_sensor.update_value(irrigator.value * 1, max_value=99.5)
+            humidity_sensor.update_value(irrigator.value * 3, max_value=99.5)
         if heater.on:
-            temperature_sensor.update_value(0.5, max_value=heater.value - 0.1)
+            temperature_sensor.update_value(2, max_value=heater.value - 0.1)
         if cooler.on:
-            temperature_sensor.update_value(-0.5, max_value=cooler.value + 0.1)
+            temperature_sensor.update_value(-2, max_value=cooler.value + 0.1)
         if lamps.on:
             light_sensor.update_value(0, max_value=lamps.value)
         if curtains.on:
@@ -165,12 +165,12 @@ def updates(humidity_sensor, temperature_sensor, light_sensor, irrigator, heater
             if curtains_base_value is not None:
                 light_sensor.update_value(0, base_value=curtains_base_value, curtains_intensity=curtains.value)
             curtains_base_value = None
-        humidity_sensor.value += random.choice([0.5, -0.5])
+        humidity_sensor.value += random.choice([1, -1])
         humidity_sensor.value = min(max(humidity_sensor.value, 0), 100)
-        temperature_sensor.value += random.choice([0.1, -0.1])
+        temperature_sensor.value += random.choice([0.5, -0.5])
         light_sensor.value += random.choice([1, -1])
 
-        time.sleep(2)
+        time.sleep(1)
 
 def send_status_to_gateway(devices):
     while True:
@@ -205,7 +205,6 @@ if __name__ == "__main__":
         value=22.0, 
         unit="°C"
     )
-    threading.Thread(target=temperature_sensor.start).start()
 
     humidity_sensor = Sensor(
         type="Sensor", 
@@ -215,7 +214,6 @@ if __name__ == "__main__":
         value=60.0, 
         unit="%"
     )
-    threading.Thread(target=humidity_sensor.start).start()
 
     light_sensor = Sensor(
         type="Sensor", 
@@ -225,7 +223,6 @@ if __name__ == "__main__":
         value=75.0, 
         unit="lux"
     )
-    threading.Thread(target=light_sensor.start).start()
 
     # Atuadores
     irrigator = Actuator(
@@ -235,7 +232,6 @@ if __name__ == "__main__":
         name="Irrigator", 
         unit="L/h"
     )
-    threading.Thread(target=irrigator.start).start()
 
     heater = Actuator(
         type="Actuator", 
@@ -244,8 +240,7 @@ if __name__ == "__main__":
         name="Heater", 
         unit="°C"
     )
-    threading.Thread(target=heater.start).start()
-
+    
     cooler = Actuator(
         type="Actuator", 
         feature="Temperature",  
@@ -253,7 +248,6 @@ if __name__ == "__main__":
         name="Cooler", 
         unit="°C"
     )
-    threading.Thread(target=cooler.start).start()
 
     lamps = Actuator(
         type="Actuator",
@@ -262,7 +256,6 @@ if __name__ == "__main__":
         name="Lamps", 
         unit="lux"
     )
-    threading.Thread(target=lamps.start).start()
 
     curtains = Actuator(
         type="Actuator",
@@ -271,12 +264,19 @@ if __name__ == "__main__":
         name="Curtains", 
         unit="%"
     )
+
+    threading.Thread(target=temperature_sensor.start).start()
+    threading.Thread(target=humidity_sensor.start).start()
+    threading.Thread(target=light_sensor.start).start()
+    threading.Thread(target=irrigator.start).start()
+    threading.Thread(target=heater.start).start()
+    threading.Thread(target=cooler.start).start()
+    threading.Thread(target=lamps.start).start()
     threading.Thread(target=curtains.start).start()
 
 
     devices = [humidity_sensor, temperature_sensor, light_sensor, irrigator, heater, cooler, lamps, curtains]
-
-   
+    #devices = []
 
     threading.Thread(target=updates, args=(*devices,), daemon=True).start()
     threading.Thread(target=send_status_to_gateway, args=(devices, ), daemon=True).start()

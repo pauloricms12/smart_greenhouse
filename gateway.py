@@ -2,6 +2,7 @@ import socket
 import threading
 from concurrent import futures
 import greenhouse_pb2
+import time
 
 BUFFER_SIZE = 1024
 PORT = 50000
@@ -91,6 +92,49 @@ def send_to_device(request):
         print(f"[GATEWAY] Error connecting to {request.name} on port {port}: {e}")
         return None
 
+# def handle_client(conn, addr):
+#     print(f"[CLIENT] Connected from {addr}")
+#     try:
+#         while True:
+#             data = conn.recv(BUFFER_SIZE)
+#             if not data:
+#                 break
+#             request = greenhouse_pb2.Command()
+#             request.ParseFromString(data)
+#             print(f"[CLIENT] Command received: {request.command} for {request.name}")
+#             if request.command == 'GET':
+#                 global device_status
+
+#                 with device_status_lock:
+#                     found_status = next(
+#                         (status for status in device_status if status.name == request.name), None
+#                     )
+
+#                 if found_status:
+#                     response = greenhouse_pb2.Response()
+#                     device_status_proto = response.device_status.add()
+#                     device_status_proto.type = found_status.type
+#                     device_status_proto.name = found_status.name
+#                     device_status_proto.value = found_status.value
+#                     device_status_proto.status = found_status.status
+#                     device_status_proto.unit = found_status.unit
+#                     device_status_proto.feature = found_status.feature
+#                     conn.send(response.SerializeToString())
+#                 else:
+#                     response = greenhouse_pb2.Response()
+#                     response.response = "Device not found."
+#             elif request.command == 'SET':
+#                 response = send_to_device(request)
+#                 if response:
+#                     conn.send(response.SerializeToString())
+#                 else:
+#                     conn.send(b"Device not available or error in communication.")
+#     except Exception as e:
+#         print(f"Error on Client: {e}")
+#     finally:
+#         conn.close()
+
+
 def handle_client(conn, addr):
     print(f"[CLIENT] Connected from {addr}")
     try:
@@ -101,37 +145,30 @@ def handle_client(conn, addr):
             request = greenhouse_pb2.Command()
             request.ParseFromString(data)
             print(f"[CLIENT] Command received: {request.command} for {request.name}")
+            response = greenhouse_pb2.Response()
             if request.command == 'GET':
-                global device_status
+                response.response = "Status updated successfully"
 
-                with device_status_lock:
-                    found_status = next(
-                        (status for status in device_status if status.name == request.name), None
-                    )
-
-                if found_status:
-                    response = greenhouse_pb2.Response()
-                    device_status_proto = response.device_status.add()
-                    device_status_proto.type = found_status.type
-                    device_status_proto.name = found_status.name
-                    device_status_proto.value = found_status.value
-                    device_status_proto.status = found_status.status
-                    device_status_proto.unit = found_status.unit
-                    device_status_proto.feature = found_status.feature
-                    conn.send(response.SerializeToString())
-                else:
-                    response = greenhouse_pb2.Response()
-                    response.response = "Device not found."
             elif request.command == 'SET':
                 response = send_to_device(request)
-                if response:
-                    conn.send(response.SerializeToString())
-                else:
-                    conn.send(b"Device not available or error in communication.")
+            for device in device_status:
+                    device_entry = response.device_status.add()
+                    device_entry.name = device.name
+                    device_entry.type = device.type
+                    device_entry.feature = device.feature
+                    device_entry.on = device.on
+                    device_entry.status = device.status
+                    device_entry.value = device.value
+                    device_entry.unit = device.unit
+            if response:
+                conn.send(response.SerializeToString())
+            else:
+                conn.send(b"Device not available or error in communication.")
     except Exception as e:
         print(f"Error on Client: {e}")
     finally:
         conn.close()
+
 
 def start_client_listener():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
