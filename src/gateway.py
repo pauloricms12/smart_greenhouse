@@ -54,29 +54,21 @@ def receive_devices_statuses():
     while True:
         conn, addr = sock.accept()
         print(f"[GATEWAY] Connection established with Greenhouse at {addr}")
-        conn.settimeout(5)
         try:
             while True:
-                try:
-                    data = conn.recv(BUFFER_SIZE)
-                    if not data:
-                        break
+                data = conn.recv(BUFFER_SIZE)
+                if not data:
+                    break
 
-                    response = greenhouse_pb2.Response()
-                    response.ParseFromString(data)
+                response = greenhouse_pb2.Response()
+                response.ParseFromString(data)
 
-                    with device_status_lock:
-                        device_status = list(response.device_status)
+                with device_status_lock:
+                    device_status = list(response.device_status)
 
-                    print("[GATEWAY] Updated device_status:")
-                    for status in device_status:
-                        print(f"  - {status.name}: {status.value} {status.unit} ({status.feature})")
-               
-                except socket.timeout:
-                    print("[GATEWAY] No data received for 5 seconds. Waiting for reconnection...")
-                    with device_status_lock:
-                        device_status = [] 
-                    time.sleep(1)  
+                print("[GATEWAY] Updated device_status:")
+                for status in device_status:
+                    print(f"  - {status.name}: {status.value} {status.unit} ({status.feature})")
         except Exception as e:
             print(f"[GATEWAY] Error handling Greenhouse connection: {e}")
         finally:
